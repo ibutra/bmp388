@@ -63,7 +63,7 @@ pub enum Addr {
     Secondary = 0x77,
 }
 
-/// Standard sea level pressure, unit: pa
+/// Standard sea level pressure, unit: Pa
 ///
 /// > The standard atmosphere (symbol: atm) is a unit of pressure defined as 101,325 Pa.
 ///
@@ -294,27 +294,40 @@ impl<I2C: ehal::i2c::I2c> BMP388<I2C, Blocking> {
     pub fn altitude(&mut self) -> Result<f64, I2C::Error> {
         let pressure = self.sensor_values()?.pressure;
 
-        let altitude = 44307.69396 * (1.0 - (pressure / self.sea_level_pressure).pow(0.190284));
+        // convert Pa to millibar (hPa == millibar)
+        let sea_level_pressure_mb = self.sea_level_pressure / 100.0;
+        let altitude = 44307.69396 * (1.0 - (pressure / sea_level_pressure_mb).pow(0.190284));
 
         Ok(altitude)
     }
-    /// Calibrate the the altitude based on the current pressure.
+
+    /// Calibrate the the altitude based on the current pressure (in Pa).
     ///
     /// Takes the given current location altitude as the reference value to
     /// eliminate the absolute difference for subsequent pressure and altitude data.
     /// Make sure you call this method only when needed or it can throw off the
     /// value of newer readings.
     ///
+    /// This can only be done once, as the standard sea level pressure is required
+    /// for the absolute difference calculation.
+    ///
     /// # Returns
-    /// The newly calculated sea level pressure.
+    /// Some - The newly calculated sea level pressure.
+    /// None - the sea level pressure has already been calibrated, this can only be done once.
     ///
     /// Taken from the Arduino library for BMP388: <https://github.com/DFRobot/DFRobot_BMP3XX/blob/master/python/raspberrypi/DFRobot_BMP3XX.py>
-    pub fn calibrated_absolute_difference(&mut self, altitude: f64) -> Result<f64, I2C::Error> {
-        let pressure = self.sensor_values()?.pressure;
+    pub fn calibrated_absolute_difference(
+        &mut self,
+        altitude: f64,
+    ) -> Result<Option<f64>, I2C::Error> {
+        if STANDARD_SEA_LEVEL_PRESSURE == self.sea_level_pressure {
+            let pressure = self.sensor_values()?.pressure;
+            self.sea_level_pressure = pressure / (1.0 - (altitude / 44307.69396)).pow(5.255302);
 
-        self.sea_level_pressure = pressure / (1.0 - (altitude / 44307.69396)).pow(5.255302);
-
-        Ok(self.sea_level_pressure)
+            Ok(Some(self.sea_level_pressure))
+        } else {
+            Ok(None)
+        }
     }
 
     /// Sets power settings
