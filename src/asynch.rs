@@ -21,7 +21,8 @@ impl<I2C: embedded_hal_async::i2c::I2c> BMP388<I2C, Async> {
             phantom: PhantomData,
         };
 
-        if chip.id().await? == CHIP_ID {
+        let chip_id = chip.id().await?;
+        if [CHIP_ID, BMP390_CHIP_ID].contains(&chip_id) {
             chip.reset().await?;
             // without this the first few bytes of calib data could be incorrectly zero
             delay.delay_ms(10).await;
