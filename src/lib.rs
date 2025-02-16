@@ -66,6 +66,7 @@ pub enum Addr {
 /// Standard sea level pressure, unit: pa
 ///
 /// > The standard atmosphere (symbol: atm) is a unit of pressure defined as 101,325 Pa.
+///
 /// _Wikipedia_
 const STANDARD_SEA_LEVEL_PRESSURE: f64 = 101325.0;
 
