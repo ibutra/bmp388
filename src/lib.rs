@@ -41,8 +41,10 @@ mod asynch;
 
 pub mod config;
 
-/// The expected value of the ChipId register
+/// The expected value of the ChipId register for BMP388
 pub const CHIP_ID: u8 = 0x50;
+/// The expected value of the ChipId register for BMP390
+pub const BMP390_CHIP_ID: u8 = 0x60;
 
 /// The I2C address of a [`BMP388`] sensor.
 ///
@@ -242,7 +244,8 @@ impl<I2C: ehal::i2c::I2c> BMP388<I2C, Blocking> {
             phantom: PhantomData,
         };
 
-        if chip.id()? == CHIP_ID {
+        let chip_id = chip.id()?;
+        if [CHIP_ID, BMP390_CHIP_ID].contains(&chip_id) {
             chip.reset()?;
             // without this the first few bytes of calib data could be incorrectly zero
             delay.delay_ms(10);
